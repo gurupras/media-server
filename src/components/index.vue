@@ -41,6 +41,7 @@
 </template>
 
 <script>
+/* global Hls */
 import axios from 'axios'
 import Entry from '@/components/entry'
 import Plyr from '@/../static/plyr.js'
