@@ -1,3 +1,4 @@
+const fs = require('fs')
 const path = require('path')
 const exec = require('child-process-promise').exec
 const shortuuid = require('shortuuid')
@@ -69,9 +70,18 @@ module.exports = function (config) {
         console.log(cmdline)
         exec(cmdline)
 
-        setTimeout(() => {
-          resolve(m3u8)
-        }, 1000)
+        // Wait for the file to have some content before returning
+        const interval = setInterval(() => {
+          try {
+            const stat = fs.statSync(m3u8)
+            if (stat.size > 0) {
+              clearInterval(interval)
+              resolve(path.relative(outdir, m3u8))
+            }
+          } catch (e) {
+            // File probably doesn't exist yet..just retry
+          }
+        }, 100)
       })
     }
   }

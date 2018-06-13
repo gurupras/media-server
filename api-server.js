@@ -87,6 +87,7 @@ app.get('/api/load-video', async (req, res) => {
     console.log(`[load-video]: ${src} is not web compatible: ${JSON.stringify(webCompatibility)}`)
     type = 'hls'
     finalSrc = await ffmpeg.createVOD(config.outdir)
+    finalSrc = path.join('tmp', finalSrc)
   }
   res.send(JSON.stringify({
     src: finalSrc,
