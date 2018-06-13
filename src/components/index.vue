@@ -128,6 +128,7 @@ export default {
     this.plyr = new Plyr(this.$el.querySelector('video'), {
       iconUrl: '/static/plyr.svg'
     })
+    window.plyr = this.plyr
   }
 }
 </script>
