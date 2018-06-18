@@ -25,8 +25,12 @@ if (config.server.https) {
 
 const FFMpeg = require('./ffmpeg.js')(config.ffmpeg)
 
-function checkHeaders (req, res, next) {
+app.use((req, res, next) => {
+  console.log(`Checking headers`)
   const expectedHeaders = config.server.check_headers
+  if (!expectedHeaders) {
+    return next()
+  }
   var failed = false
   Object.keys(expectedHeaders).forEach((key) => {
     const expectedValue = expectedHeaders[key]
@@ -40,16 +44,9 @@ function checkHeaders (req, res, next) {
   if (!failed) {
     next()
   }
-}
+})
 
-if (config.server.check_headers) {
-  app.use('/tmp', checkHeaders)
-}
 app.use('/tmp', express.static(config.outdir))
-
-if (config.server.check_headers) {
-  app.use('/media', checkHeaders)
-}
 app.use('/media', express.static(config.media_path))
 
 app.get('/api/ls', (req, res) => {
@@ -70,7 +67,8 @@ app.get('/api/ls', (req, res) => {
       '.m4v',
       '.mkv',
       '.avi',
-      '.flv'
+      '.flv',
+      '.m3u8'
     ])
 
     const paths = files.map((e) => {
@@ -102,9 +100,14 @@ app.get('/api/load-video', async (req, res) => {
   const ffmpeg = new FFMpeg(src)
   var finalSrc
   var type
+  const srcPath = path.parse(src)
   const webCompatibility = await ffmpeg.isWebCompatible()
   if (webCompatibility.result) {
-    type = 'mp4'
+    if (srcPath.ext === '.m3u8') {
+      type = 'hls'
+    } else {
+      type = 'mp4'
+    }
     finalSrc = path.join('/media', path.relative(config.media_path, src))
   } else {
     console.log(`[load-video]: ${src} is not web compatible: ${JSON.stringify(webCompatibility)}`)
