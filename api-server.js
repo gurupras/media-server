@@ -128,10 +128,14 @@ if (config.server.http_port) {
   } else {
     httpServer = http.createServer(app)
   }
-  httpServer.listen(config.server.http_port)
+  httpServer.listen(config.server.http_port, () => {
+    console.log(`HTTP server listening on port ${config.server.http_port}`)
+  })
 }
 
 if (config.server.https_port) {
-  const httpsServer = https.createServer(app, config.server.https)
-  httpsServer.listen(config.server.https_port)
+  const httpsServer = https.createServer(config.server.https, app)
+  httpsServer.listen(config.server.https_port, () => {
+    console.log(`HTTPS server listening on port ${config.server.https_port}`)
+  })
 }
