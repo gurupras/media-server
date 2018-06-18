@@ -25,8 +25,31 @@ if (config.server.https) {
 
 const FFMpeg = require('./ffmpeg.js')(config.ffmpeg)
 
+function checkHeaders (req, res, next) {
+  const expectedHeaders = config.server.check_headers
+  var failed = false
+  Object.keys(expectedHeaders).forEach((key) => {
+    const expectedValue = expectedHeaders[key]
+    const headerValue = req.header(key)
+    if (headerValue !== expectedValue) {
+      failed = true
+      res.status(500).write(`Permission denied! Bad header: ${key}: ${headerValue}`)
+      return res.end()
+    }
+  })
+  if (!failed) {
+    next()
+  }
+}
 
+if (config.server.check_headers) {
+  app.use('/tmp', checkHeaders)
+}
 app.use('/tmp', express.static(config.outdir))
+
+if (config.server.check_headers) {
+  app.use('/media', checkHeaders)
+}
 app.use('/media', express.static(config.media_path))
 
 app.get('/api/ls', (req, res) => {
@@ -79,7 +102,7 @@ app.get('/api/load-video', async (req, res) => {
   const ffmpeg = new FFMpeg(src)
   var finalSrc
   var type
-  const webCompatibility = ffmpeg.isWebCompatible()
+  const webCompatibility = await ffmpeg.isWebCompatible()
   if (webCompatibility.result) {
     type = 'mp4'
     finalSrc = path.join('/media', path.relative(config.media_path, src))
