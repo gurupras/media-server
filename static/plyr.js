@@ -4372,6 +4372,13 @@ typeof navigator === "object" && (function (global, factory) {
                     currentTime: plyr.currentTime
                 }
             };
+
+            if (plyr.hls) {
+                // Plyr has been hijacked by HLS
+                defaults.mediaInfo.source = plyr.hls.manifestURL;
+                defaults.mediaInfo.type = 'application/x-mpegURL';
+            }
+
             var options = extend({}, defaults);
 
             var mediaInfo = new window.chrome.cast.media.MediaInfo(options.mediaInfo.source, options.mediaInfo.type);

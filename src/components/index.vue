@@ -112,6 +112,9 @@ export default {
           var hls = new Hls()
           hls.loadSource(src)
           hls.attachMedia(this.plyr.media)
+          // XXX: Currently, the google-cast plugin requires HLS manifest URL to be exported
+          this.plyr.hls = hls
+          this.plyr.hls.manifestURL = src
       }
     }
   },
