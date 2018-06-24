@@ -81,7 +81,7 @@ export default {
         }
       })
       const data = response.data
-      const src = data.src
+      const src = new URL(data.src, window.location.origin).href
       const type = data.type
       switch (type) {
         case 'mp4':
