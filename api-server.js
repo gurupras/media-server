@@ -6,6 +6,7 @@ const yaml = require('js-yaml')
 const http = require('http')
 const https = require('https')
 const express = require('express')
+const cors = require('cors')
 const app = express()
 
 var config
@@ -16,6 +17,10 @@ try {
   console.log(`Failed to read ${configPath}: ${e}\nUsing defaults`)
   config = {}
 }
+
+app.use(cors({
+  origin: true
+}))
 
 if (config.server.https) {
   const https = config.server.https
