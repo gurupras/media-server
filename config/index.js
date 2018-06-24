@@ -90,9 +90,9 @@ var opts = {
 if (config.webpack && config.webpack.dev) {
   const dev = config.webpack.dev
   if (dev.https) {
-    const https = config.dev.https
-    https.key = fs.readFileSync(https.key)
-    https.cert = fs.readFileSync(https.cert)
+    const https = dev.https
+    https.key = fs.readFileSync(https.key, 'utf-8')
+    https.cert = fs.readFileSync(https.cert, 'utf-8')
   }
   opts = deepmerge(opts, config.webpack)
 }

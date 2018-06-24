@@ -31,8 +31,10 @@ const devWebpackConfig = merge(baseWebpackConfig, {
     hot: true,
     contentBase: false, // since we use CopyWebpackPlugin.
     compress: true,
+    public: config.dev.public,
     host: HOST || config.dev.host,
     port: PORT || config.dev.port,
+    https: config.dev.https ? config.dev.https : false,
     open: config.dev.autoOpenBrowser,
     overlay: config.dev.errorOverlay
       ? { warnings: false, errors: true }
