@@ -2,7 +2,26 @@
   <div>
     <div class="row">
       <div class="col s12 m6">
-        <video crossorigin></video>
+        <div class="video-container">
+          <video crossorigin class="responsive-video" v-show="videoLoaded === videoStates.LOADED"></video>
+          <div v-if="videoLoaded === videoStates.LOADING" style="position: relative; width: 100%; height: 100%;" class="valign-wrapper center">
+            <div style="position: absolute; width: 100%; height: 100%; margin-left: auto; margin-right: auto;">
+              <div class="preloader-wrapper big active">
+                <div class="spinner-layer spinner-blue-only">
+                  <div class="circle-clipper left">
+                    <div class="circle"></div>
+                  </div>
+                  <div class="gap-patch">
+                    <div class="circle"></div>
+                  </div>
+                  <div class="circle-clipper right">
+                    <div class="circle"></div>
+                  </div>
+                </div>
+              </div>
+             </div>
+           </div>
+        </div>
       </div>
       <div class="col m6 hide-on-small-only tree-container">
         <div style="overflow-y: auto;">
@@ -53,6 +72,12 @@ export default {
     'entry': Entry
   },
   data () {
+    const videoStates = {
+      UNKNOWN: 'unknown',
+      LOADING: 'loading',
+      LOADED: 'loaded'
+    }
+
     return {
       filesystem: {
         pathSep: ''
@@ -60,6 +85,8 @@ export default {
       rootAttrs: {
         absolutePath: ''
       },
+      videoLoaded: videoStates.UNKNOWN,
+      videoStates,
       plyr: undefined
     }
   },
@@ -74,7 +101,10 @@ export default {
       entry.attrs.children = response.data.tree
     },
     async onSelect (path) {
+      const self = this
       console.log(`Selected: ${path}`)
+      this.videoLoaded = this.videoStates.LOADING
+
       const response = await axios.get('/api/load-video', {
         params: {
           src: path
@@ -116,6 +146,10 @@ export default {
           this.plyr.hls = hls
           this.plyr.hls.manifestURL = src
       }
+
+      this.plyr.on('loadedmetadata', () => {
+        self.videoLoaded = self.videoStates.LOADED
+      })
     }
   },
   beforeMount () {
@@ -132,6 +166,7 @@ export default {
     this.plyr = new Plyr(this.$el.querySelector('video'), {
       iconUrl: '/static/plyr.svg'
     })
+    window.app = this
     window.plyr = this.plyr
   }
 }
@@ -162,5 +197,9 @@ ul {
   padding-left: 1em;
   line-height: 1.5em;
   list-style-type: dot;
+}
+
+.video-container {
+  max-height: 420px;
 }
 </style>
