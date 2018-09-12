@@ -25,34 +25,52 @@ module.exports = function (config) {
 
     async isWebCompatible () {
       var result = true
-
       const metadata = await this.getMetadata()
       const streams = metadata.streams
-      var videoStream
-      var audioStream
+
+      const videoStreams = []
+      const audioStreams = []
+      const subtitleStreams = []
 
       streams.forEach((stream) => {
-        if (stream.codec_type === 'video') {
-          videoStream = stream
-        } else if (stream.codec_type === 'audio') {
-          audioStream = stream
+        let streamArray
+        switch (stream.codec_type) {
+          case 'video':
+            streamArray = videoStreams
+            break
+          case 'audio':
+            streamArray = audioStreams
+            break
+          case 'subtitle':
+            streamArray = subtitleStreams
+            break
         }
+        streamArray.push(stream)
       })
 
-      // Check video stream
-      const videoCodec = videoStream.codec_name
-      if (!videoCodec.endsWith('264') && videoCodec.indexOf('webm') === -1) {
+      if (videoStreams.length > 1 || audioStreams.length > 1 || subtitleStreams.length > 0) {
+        // We cannot play containers
         result = false
       }
 
-      const audioCodec = audioStream.codec_name
-      if (audioCodec.indexOf('mp3') === -1 && audioCodec.indexOf('aac') === -1) {
-        result = false
+      if (result) {
+        // Check video streams
+        const videoCodec = videoStreams[0].codec_name
+        if (!videoCodec.endsWith('264') && videoCodec.indexOf('webm') === -1) {
+          result = false
+        }
+
+        const audioCodec = audioStreams[0].codec_name
+        if (audioCodec.indexOf('mp3') === -1 && audioCodec.indexOf('aac') === -1) {
+          result = false
+        }
       }
+
       return {
         result,
-        videoCodec,
-        audioCodec
+        videoStreams,
+        audioStreams,
+        subtitleStreams
       }
     }
 

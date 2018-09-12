@@ -107,18 +107,16 @@ app.get('/api/load-video', async (req, res) => {
   var type
   const srcPath = path.parse(src)
   const webCompatibility = await ffmpeg.isWebCompatible()
+  finalSrc = path.join('/media', path.relative(config.media_path, src))
   if (webCompatibility.result) {
-    if (srcPath.ext === '.m3u8') {
-      type = 'hls'
-    } else {
-      type = 'mp4'
-    }
-    finalSrc = path.join('/media', path.relative(config.media_path, src))
+    type = 'mp4'
   } else {
     console.log(`[load-video]: ${src} is not web compatible: ${JSON.stringify(webCompatibility)}`)
     type = 'hls'
-    finalSrc = await ffmpeg.createVOD(config.outdir)
-    finalSrc = path.join('tmp', finalSrc)
+    if (srcPath.ext !== '.m3u8') {
+      finalSrc = await ffmpeg.createVOD(config.outdir)
+      finalSrc = path.join('/tmp', finalSrc)
+    }
   }
   res.send(JSON.stringify({
     src: finalSrc,
