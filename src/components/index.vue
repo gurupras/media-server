@@ -26,34 +26,26 @@
       <div class="col m6 hide-on-small-only tree-container">
         <div style="overflow-y: auto;">
           <ul class="browser-default tree-ul">
-            <entry
-                :path-sep="filesystem.pathSep"
-                :is-directory="true"
-                name="root"
-                :attrs="rootAttrs"
-                :children="filesystem.tree"
-                parent-path=""
-                path=""
-                absolute-path=""
-                @selected="onSelect"
-                @updateDirectory="updateDirectory"/>
+            <vue-file-explorer v-for="(mount, $index) in mounts" :key="$index"
+            :absolute-path="mount.absolutePath"
+            :is-directory="mount.isDirectory"
+            :name="mount.name"
+            :children.sync="mount.children"
+            @selected="onSelect"
+            @update-directory="updateDirectory"/>
           </ul>
         </div>
       </div>
     </div>
     <div class="row hide-on-med-and-up">
       <div class="col s12 tree-container">
-        <ul class="browser-default tree-ul">
-          <entry
-              :path-sep="filesystem.pathSep"
-              :is-directory="true"
-              name="root"
-              :attrs="rootAttrs"
-              :children="filesystem.tree"
-              parent-path=""
-              path=""
-              @selected="onSelect"/>
-        </ul>
+        <vue-file-explorer v-for="(mount, $index) in mounts" :key="$index"
+        :absolute-path="mount.absolutePath"
+        :is-directory="mount.isDirectory"
+        :name="mount.name"
+        :children.sync="mount.children"
+        @selected="onSelect"
+        @update-directory="updateDirectory"/>
       </div>
     </div>
   </div>
@@ -62,14 +54,14 @@
 <script>
 /* global Hls */
 import axios from 'axios'
-import Entry from '@/components/entry'
+import VueFileExplorer from '@gurupras/vue-file-explorer'
 import Plyr from '@/../static/plyr.js'
 // import FakeTree from '@/js/fake-tree.js'
 
 export default {
   name: 'index',
   components: {
-    'entry': Entry
+    VueFileExplorer
   },
   data () {
     const videoStates = {
@@ -79,35 +71,37 @@ export default {
     }
 
     return {
-      filesystem: {
-        pathSep: ''
-      },
-      rootAttrs: {
-        absolutePath: ''
-      },
+      mounts: [],
       videoLoaded: videoStates.UNKNOWN,
       videoStates,
       plyr: undefined
     }
   },
   methods: {
-    async updateDirectory (entry) {
-      const response = await axios.get('/api/ls', {
-        params: {
-          path: entry.absolutePath,
-          isAbsolute: true
-        }
-      })
-      entry.attrs.children = response.data.tree
+    async updateDirectory ({ component, paths }) {
+      if (!component.expanded) {
+        const response = await axios.get('/api/ls', {
+          params: {
+            paths
+          }
+        })
+        component.childrenData = response.data
+      }
     },
-    async onSelect (path) {
+    async onSelect ({ event, paths, component }) {
+      if (event.multiSelect || event.shiftSelect) {
+        return
+      }
+      if (component.isDirectory) {
+        return
+      }
       const self = this
-      console.log(`Selected: ${path}`)
+      console.log(`Selected: ${component.name}`)
       this.videoLoaded = this.videoStates.LOADING
 
       const response = await axios.get('/api/load-video', {
         params: {
-          src: path
+          src: paths
         }
       })
       const data = response.data
@@ -152,15 +146,9 @@ export default {
       })
     }
   },
-  beforeMount () {
-    const self = this
-    axios.get('/api/ls').then((response) => {
-      self.filesystem = {
-        pathSep: response.data.pathSep,
-        // tree: response.data.tree
-        tree: response.data.tree
-      }
-    })
+  async beforeMount () {
+    const response = await axios.get('/api/get-mounts')
+    this.mounts = response.data
   },
   mounted () {
     this.plyr = new Plyr(this.$el.querySelector('video'), {

@@ -51,22 +51,51 @@ app.use((req, res, next) => {
   }
 })
 
+const mediaPaths = config.media_paths
+const mounts = {}
+mediaPaths.forEach(entry => (mounts[entry.name] = entry))
+
 app.use('/tmp', express.static(config.outdir))
-app.use('/media', express.static(config.media_path))
+mediaPaths.forEach(entry => {
+  app.use(`/media-files/${entry.name}/`, express.static(entry.absolutePath))
+})
+
+app.get('/api/get-mounts', (req, res) => {
+  const mounts = mediaPaths.map(entry => {
+    return {
+      name: entry.name,
+      isDirectory: entry.isDirectory
+    }
+  })
+  res.send(mounts)
+})
+
+function getMountFromPaths (paths) {
+  const firstPath = paths[0]
+  return mounts[firstPath]
+}
+
+function buildAbsolutePath (paths) {
+  // Replace paths[0] with the absolutePath from mounts
+  const mount = getMountFromPaths(paths)
+  if (!mount) {
+    return
+  }
+  const firstPath = mount.absolutePath
+  return path.join(firstPath, ...paths.slice(1))
+}
 
 app.get('/api/ls', (req, res) => {
-  const qs = req.query
+  const { query } = req
+  const paths = query.paths
 
-  var lsPath = config.media_path
-  if (qs.path) {
-    if (qs.isAbsolute) {
-      lsPath = qs.path
-    } else {
-      lsPath = path.join(lsPath, qs.path)
-    }
+  const absolutePath = buildAbsolutePath(paths)
+  if (!absolutePath) {
+    return res.status(400).send(`Invalid path: ${JSON.stringify(paths)}`)
   }
-  console.log(`ls ${lsPath}`)
-  fs.readdir(lsPath, (err, files) => {
+
+  console.log(`ls ${absolutePath}`)
+  fs.readdir(absolutePath, (err, files) => {
     const validExtensions = new Set([
       '.mp4',
       '.m4v',
@@ -77,37 +106,40 @@ app.get('/api/ls', (req, res) => {
     ])
 
     const paths = files.map((e) => {
-      const fullPath = path.join(lsPath, e)
-      const stat = fs.statSync(fullPath)
-      if (!stat.isDirectory() && !validExtensions.has(path.extname(e))) {
-        // Is a file and not one with valid extension..ignore it
-        return undefined
-      }
-      return {
-        name: e,
-        path: e,
-        parentPath: lsPath,
-        absolutePath: path.join(lsPath, e),
-        isDirectory: stat.isDirectory(),
-        children: []
+      const fullPath = path.join(absolutePath, e)
+      try {
+        const stat = fs.statSync(fullPath)
+        if (!stat.isDirectory() && !validExtensions.has(path.extname(e))) {
+          // Is a file and not one with valid extension..ignore it
+          return undefined
+        }
+        return {
+          name: e,
+          isDirectory: stat.isDirectory(),
+        }
+      } catch (e) {
       }
     }).filter(e => !!e)
-    res.send(JSON.stringify({
-      pathSep: JSON.stringify(path.sep),
-      tree: paths
-    }))
+    res.send(paths)
   })
 })
 
 app.get('/api/load-video', async (req, res) => {
-  const qs = req.query
-  const src = qs.src
-  const ffmpeg = new FFMpeg(src)
+  const { query } = req
+  const { src } = query
+  debugger
+  const absolutePath = buildAbsolutePath(src)
+  if (!absolutePath) {
+    return res.status(400).send(`Invalid path: ${JSON.stringify(paths)}`)
+  }
+  const ffmpeg = new FFMpeg(absolutePath)
   var finalSrc
   var type
-  const srcPath = path.parse(src)
+  const mount = getMountFromPaths(src)
+  const absoluteMountPath = mount.absolutePath
+  const srcPath = path.parse(absolutePath)
   const webCompatibility = await ffmpeg.isWebCompatible()
-  finalSrc = path.join('/media', path.relative(config.media_path, src))
+  finalSrc = path.join('/media-files', src[0], path.relative(absoluteMountPath, absolutePath))
   if (webCompatibility.result) {
     type = 'mp4'
   } else {
